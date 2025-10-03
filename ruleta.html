@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Ruleta con Fichas y Control de Apuestas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body{margin:0;display:flex;flex-direction:column;align-items:center;background:#07270f;color:#fff;font-family:Arial,Helvetica,sans-serif;padding:20px;box-sizing:border-box;overflow:auto;}
+#croupierSelectWrap{text-align:center;margin-top:30px;}
+.croupier-wrap{position:relative;width:220px;text-align:center;margin-top:20px;display:none;}
+.croupier-wrap img{width:100%;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.6);object-fit:cover;aspect-ratio:3/4;background:#111;}
+.speech-bubble{position:absolute;top:10px;right:-160px;background:#fff;color:#111;padding:12px 16px;border-radius:12px;max-width:200px;font-weight:bold;font-size:14px;line-height:1.3;}
+.speech-bubble::after{content:"";position:absolute;bottom:20px;left:-20px;border-width:10px;border-style:solid;border-color:transparent #fff transparent transparent;}
+.ruleta-wrap{text-align:center;display:none;max-width:100%;}
+canvas{background:#222;border-radius:50%;box-shadow:0 0 30px rgba(0,0,0,.7);max-width:90vw;height:auto;}
+#controls{margin-top:15px;}
+button{padding:10px 20px;font-size:16px;font-weight:bold;cursor:pointer;border:none;border-radius:8px;background:gold;color:#111;margin:5px;box-shadow:0 4px 10px rgba(0,0,0,.5);}
+button:disabled{opacity:.5;cursor:not-allowed;}
+#resultado{margin-top:15px;font-size:20px;font-weight:bold;min-height:28px;}
+#saldo{margin-top:10px;font-size:18px;font-weight:bold;color:#ff0;}
+.fichas{margin-top:20px;text-align:center;}
+.fichas button{background:#ff0;color:#111;margin:3px;}
+.fichas .chip.selected{outline:3px solid #fff;box-shadow:0 0 0 3px rgba(255,255,255,.2) inset;}
+.tabla-ruleta{margin-top:20px;display:inline-block;max-width:95vw;overflow:auto;}
+.tabla-ruleta table{border-collapse:collapse;}
+.tabla-ruleta td{width:50px;height:50px;text-align:center;vertical-align:middle;border:1px solid #fff;cursor:pointer;font-weight:bold;user-select:none;}
+.tabla-ruleta td.red{background:#900;}
+.tabla-ruleta td.black{background:#111;}
+.tabla-ruleta td.green{background:green;color:#fff;}
+.externas{margin-top:10px;text-align:center;}
+.externas button{margin:3px;padding:5px 10px;}
+.externas button.red{background:#900;color:#fff;}
+.externas button.black{background:#111;color:#fff;}
+#totalApuesta{margin-top:10px;font-size:16px;font-weight:bold;color:#0f0;}
+#accionesApuestas{margin-top:10px;}
+.legend{opacity:.9;font-size:12px;margin-top:8px;}
+.small{font-size:12px;opacity:.9}
+</style>
+</head>
+<body>
+
+<div id="croupierSelectWrap">
+  <label for="croupierSelect">🎩 Elige tu croupier:</label>
+  <select id="croupierSelect">
+    <option value="">-- Selecciona --</option>
+    <option value="anna">Anna</option>
+    <option value="john">John</option>
+    <option value="maria">Maria</option>
+  </select>
+  <button id="confirmCroupier">Confirmar</button>
+  <div class="legend">Consejo: selecciona un croupier para comenzar, luego elige una ficha y haz tus apuestas.</div>
+</div>
+
+<div class="croupier-wrap">
+  <img src="" alt="Croupier" referrerpolicy="no-referrer">
+  <div class="speech-bubble" id="bubble">🎲 ¡La suerte está echada!</div>
+</div>
+
+<div class="ruleta-wrap">
+  <canvas id="ruleta" width="500" height="500"></canvas>
+  <div id="controls">
+    <button id="spin">Girar</button>
+    <button id="volverTirar" style="display:none;">🔄 Volver a tirar</button>
+  </div>
+  <div id="resultado"></div>
+  <div id="saldo">💰 Saldo: 1000 €</div>
+
+  <div class="fichas">
+    <h3>💰 Tus fichas</h3>
+    <button class="chip selected" data-value="1">1€</button>
+    <button class="chip" data-value="5">5€</button>
+    <button class="chip" data-value="10">10€</button>
+    <button class="chip" data-value="50">50€</button>
+    <button class="chip" data-value="100">100€</button>
+    <div class="small">Selecciona una ficha y luego toca en la mesa para sumar a esa casilla. Se descuenta del saldo al colocar.</div>
+  </div>
+
+  <div id="totalApuesta">Total apostado: 0 €</div>
+
+  <div id="accionesApuestas">
+    <button id="quitarUltima">⏮️ Quitar última apuesta</button>
+    <button id="quitarTodas">🗑️ Quitar todas las apuestas</button>
+  </div>
+
+  <div class="tabla-ruleta">
+    <table id="tablaNumeros" aria-label="Mesa de ruleta">
+      <tr>
+        <td data-num="0" class="green">0</td>
+        <td data-num="3" class="red">3</td>
+        <td data-num="6" class="black">6</td>
+        <td data-num="9" class="red">9</td>
+        <td data-num="12" class="red">12</td>
+        <td data-num="15" class="red">15</td>
+        <td data-num="18" class="red">18</td>
+        <td data-num="21" class="red">21</td>
+        <td data-num="24" class="black">24</td>
+        <td data-num="27" class="red">27</td>
+        <td data-num="30" class="red">30</td>
+        <td data-num="33" class="red">33</td>
+        <td data-num="36" class="red">36</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td data-num="2" class="black">2</td>
+        <td data-num="5" class="red">5</td>
+        <td data-num="8" class="black">8</td>
+        <td data-num="11" class="black">11</td>
+        <td data-num="14" class="red">14</td>
+        <td data-num="17" class="black">17</td>
+        <td data-num="20" class="black">20</td>
+        <td data-num="23" class="red">23</td>
+        <td data-num="26" class="black">26</td>
+        <td data-num="29" class="black">29</td>
+        <td data-num="32" class="red">32</td>
+        <td data-num="35" class="black">35</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td data-num="1" class="red">1</td>
+        <td data-num="4" class="black">4</td>
+        <td data-num="7" class="red">7</td>
+        <td data-num="10" class="black">10</td>
+        <td data-num="13" class="black">13</td>
+        <td data-num="16" class="red">16</td>
+        <td data-num="19" class="red">19</td>
+        <td data-num="22" class="black">22</td>
+        <td data-num="25" class="red">25</td>
+        <td data-num="28" class="black">28</td>
+        <td data-num="31" class="black">31</td>
+        <td data-num="34" class="red">34</td>
+      </tr>
+    </table>
+
+    <div class="externas">
+      <button data-bet="color" data-value="rojo" class="red">Rojo</button>
+      <button data-bet="color" data-value="negro" class="black">Negro</button>
+      <button data-bet="paridad" data-value="par">Par</button>
+      <button data-bet="paridad" data-value="impar">Impar</button>
+      <button data-bet="mitad" data-value="bajo">1-18</button>
+      <button data-bet="mitad" data-value="alto">19-36</button>
+      <button data-bet="docena" data-value="1">1-12</button>
+      <button data-bet="docena" data-value="2">13-24</button>
+      <button data-bet="docena" data-value="3">25-36</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------------- Variables base ----------------------
+const canvas = document.getElementById("ruleta");
+const ctx = canvas.getContext("2d");
+const W = canvas.width, H = canvas.height, cx = W/2, cy = H/2;
+
+const numeros = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const rojos = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const sector = 2 * Math.PI / numeros.length;
+
+let ruedaAng = 0, bolaAng = 0, spinning = false, ganadorIdx = -1;
+let saldo = 1000, selectedChip = 1;
+let historialApuestas = [];
+let totalApostado = 0;
+
+const croupiers = {
+  anna: { img:"https://annaetorrealba.net/wp-content/uploads/2021/01/annaetorrealbabioppal.png.webp",
+          frases:["🎲 ¡La suerte está echada!","💰 ¿Apuestas al rojo o al negro?","🔥 ¡Hoy la bola arde de emoción!"]},
+  john: { img:"./images.jpg",
+          frases:["😎 Hoy es tu día de suerte","💵 Que empiece la apuesta","⚡ La ruleta te observa"]},
+  maria:{ img:"./vini.jpg",
+          frases:["eu farei 10x se for preciso. eles não estão preparados","Primer hatriki in bernabe","💖 ¡Siente la emoción!"]}
+};
+let currentCroupier = "", fraseIdx = 0;
+
+// ---------------------- UI helpers ----------------------
+const bubble = document.getElementById("bubble");
+function decir(msg){ bubble.textContent = msg; }
+
+const saldoEl = document.getElementById("saldo");
+function actualizarSaldo(){ saldoEl.textContent = `💰 Saldo: ${saldo} €`; }
+
+const totalApuestaEl = document.getElementById("totalApuesta");
+function actualizarTotalApostado(){
+  totalApostado = historialApuestas.reduce((s,a)=>s+a.cantidad,0);
+  totalApuestaEl.textContent = `Total apostado: ${totalApostado} €`;
+}
+
+function setChipSelected(btn){
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("selected"));
+  btn.classList.add("selected");
+}
+
+function setBotonesDuranteSpin(disabled){
+  document.querySelectorAll(".chip").forEach(b=>b.disabled = disabled);
+  document.querySelectorAll("#tablaNumeros td, .externas button").forEach(b=>b.disabled = disabled);
+  document.getElementById("quitarUltima").disabled = disabled;
+  document.getElementById("quitarTodas").disabled = disabled;
+}
+
+// ---------------------- Selección de croupier ----------------------
+document.getElementById("confirmCroupier").onclick = ()=>{
+  const sel = document.getElementById("croupierSelect").value;
+  if(!sel){ alert("Debes seleccionar un croupier"); return; }
+  currentCroupier = sel;
+  document.querySelector(".croupier-wrap img").src = croupiers[currentCroupier].img;
+  document.getElementById("croupierSelectWrap").style.display = "none";
+  document.querySelector(".croupier-wrap").style.display = "block";
+  document.querySelector(".ruleta-wrap").style.display = "block";
+  actualizarSaldo();
+  actualizarTotalApostado();
+  decir(croupiers[currentCroupier].frases[fraseIdx% croupiers[currentCroupier].frases.length]); fraseIdx++;
+};
+
+// ---------------------- Dibujo de la ruleta ----------------------
+function dibujarRuleta(){
+  ctx.clearRect(0,0,W,H);
+
+  const radio = Math.min(W,H)/2 - 10;
+  for(let i=0;i<numeros.length;i++){
+    const ang0 = ruedaAng + i*sector;
+    const ang1 = ang0 + sector;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,radio,ang0,ang1);
+    ctx.closePath();
+    const n = numeros[i];
+    let color = "#0a0";
+    if(n !== 0){
+      color = rojos.has(n) ? "#b00" : "#111";
+    }
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.save();
+    ctx.fillStyle = "#fff";
+    ctx.translate(cx,cy);
+    ctx.rotate((ang0+ang1)/2);
+    ctx.textAlign = "right";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText(String(n), radio-10, 5);
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx,cy,40,0,2*Math.PI);
+  ctx.fillStyle="#333";
+  ctx.fill();
+
+  // Bola
+  const bolaRadio = radio - 20;
+  const bx = cx + Math.cos(-bolaAng) * bolaRadio;
+  const by = cy + Math.sin(-bolaAng) * bolaRadio;
+  ctx.beginPath();
+  ctx.arc(bx,by,8,0,2*Math.PI);
+  ctx.fillStyle="#fff";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - radio - 5);
+  ctx.lineTo(cx - 12, cy - radio - 25);
+  ctx.lineTo(cx + 12, cy - radio - 25);
+  ctx.closePath();
+  ctx.fillStyle = "gold";
+  ctx.fill();
+}
+
+// FUNCIÓN CORREGIDA: Índice ganador a partir de los ángulos actuales
+function idxGanadorPorAngulo(ruedaAngulo, bolaAngulo){
+  // La flecha está en la parte superior (ángulo 0 del canvas apunta hacia abajo, 
+  // pero nuestra referencia visual es -PI/2 o 3*PI/2)
+  
+  // Ángulo absoluto donde está la bola
+  const anguloAbsoluto = ruedaAngulo + bolaAngulo;
+  
+  // Normalizar a [0, 2π)
+  let anguloNormalizado = anguloAbsoluto % (2 * Math.PI);
+  if(anguloNormalizado < 0) anguloNormalizado += 2 * Math.PI;
+  
+  // Ajustar para que la flecha superior (3π/2 en nuestro sistema) sea el punto de referencia 0
+  let anguloRelativo = (anguloNormalizado + Math.PI/2) % (2 * Math.PI);
+  
+  // Calcular el índice del sector
+  const idx = Math.floor(anguloRelativo / sector);
+  
+  return idx;
+}
+
+// ---------------------- Apuestas ----------------------
+function agregarApuesta(el, cantidad, tipo, clave){
+  if(cantidad <= 0) return;
+  if(saldo < cantidad){ alert("No tienes suficiente saldo para esta apuesta"); return; }
+
+  const prev = parseInt(el.dataset.apuesta || "0", 10);
+  el.dataset.apuesta = String(prev + cantidad);
+
+  if(el.dataset.num){
+    el.textContent = `${el.dataset.num} (€${el.dataset.apuesta})`;
+  }else{
+    el.textContent = `${el.dataset.value} (€${el.dataset.apuesta})`;
+  }
+
+  historialApuestas.push({elem: el, tipo, clave, cantidad});
+  saldo -= cantidad;
+  actualizarSaldo();
+  actualizarTotalApostado();
+}
+
+function quitarUltimaApuesta(){
+  const a = historialApuestas.pop();
+  if(!a) return;
+  const el = a.elem;
+  const prev = parseInt(el.dataset.apuesta || "0", 10);
+  const nuevo = Math.max(0, prev - a.cantidad);
+  el.dataset.apuesta = String(nuevo);
+  if(nuevo === 0){
+    if(el.dataset.num) el.textContent = el.dataset.num;
+    else el.textContent = el.dataset.value || el.textContent.replace(/\s*\(€.*\)$/,"");
+  }else{
+    if(el.dataset.num) el.textContent = `${el.dataset.num} (€${nuevo})`;
+    else el.textContent = `${el.dataset.value} (€${nuevo})`;
+  }
+  saldo += a.cantidad;
+  actualizarSaldo();
+  actualizarTotalApostado();
+}
+
+function quitarTodasApuestas(){
+  historialApuestas.forEach(a=>{
+    saldo += a.cantidad;
+    const el = a.elem;
+    const prev = parseInt(el.dataset.apuesta || "0", 10);
+    const nuevo = Math.max(0, prev - a.cantidad);
+    el.dataset.apuesta = String(nuevo);
+  });
+  document.querySelectorAll("#tablaNumeros td, .externas button").forEach(el=>{
+    if(el.dataset.apuesta && parseInt(el.dataset.apuesta,10)===0){ delete el.dataset.apuesta; }
+    if(el.dataset.num) el.textContent = el.dataset.num;
+    else if(el.dataset.value) el.textContent = el.dataset.value;
+  });
+  historialApuestas = [];
+  actualizarSaldo();
+  actualizarTotalApostado();
+}
+
+// Click en fichas
+document.querySelectorAll(".chip").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    selectedChip = parseInt(btn.dataset.value,10);
+    setChipSelected(btn);
+  });
+});
+
+// Click en mesa
+function clickMesaHandler(el){
+  if(!currentCroupier){ alert("Primero elige un croupier"); return; }
+  if(spinning) return;
+  const cantidad = selectedChip;
+
+  if(el.dataset.num){
+    const n = parseInt(el.dataset.num,10);
+    agregarApuesta(el, cantidad, "numero", String(n));
+  }else if(el.dataset.bet && el.dataset.value){
+    const tipo = el.dataset.bet;
+    const val = el.dataset.value;
+    agregarApuesta(el, cantidad, tipo, val);
+  }
+}
+document.querySelectorAll("#tablaNumeros td, .externas button").forEach(el=>{
+  el.addEventListener("click", ()=> clickMesaHandler(el));
+});
+
+// Botones deshacer
+document.getElementById("quitarUltima").addEventListener("click", ()=>{
+  if(spinning) return;
+  quitarUltimaApuesta();
+});
+document.getElementById("quitarTodas").addEventListener("click", ()=>{
+  if(spinning) return;
+  quitarTodasApuestas();
+});
+
+// ---------------------- Pagos ----------------------
+function esRojo(n){ return rojos.has(n); }
+function esNegro(n){ return n!==0 && !rojos.has(n); }
+function esPar(n){ return n!==0 && (n%2===0); }
+function esImpar(n){ return n%2===1; }
+function esBajo(n){ return n>=1 && n<=18; }
+function esAlto(n){ return n>=19 && n<=36; }
+function docenaDe(n){
+  if(n>=1 && n<=12) return "1";
+  if(n>=13 && n<=24) return "2";
+  if(n>=25 && n<=36) return "3";
+  return "";
+}
+
+function calcularGanancias(numeroGanador){
+  let ganancia = 0;
+  historialApuestas.forEach(a=>{
+    const cant = a.cantidad;
+    if(a.tipo === "numero"){
+      const n = parseInt(a.clave,10);
+      if(n === numeroGanador) ganancia += cant * 36;
+    }else if(a.tipo === "color"){
+      if(numeroGanador === 0) return;
+      if(a.clave === "rojo" && esRojo(numeroGanador)) ganancia += cant * 2;
+      if(a.clave === "negro" && esNegro(numeroGanador)) ganancia += cant * 2;
+    }else if(a.tipo === "paridad"){
+      if(numeroGanador === 0) return;
+      if(a.clave === "par" && esPar(numeroGanador)) ganancia += cant * 2;
+      if(a.clave === "impar" && esImpar(numeroGanador)) ganancia += cant * 2;
+    }else if(a.tipo === "mitad"){
+      if(numeroGanador === 0) return;
+      if(a.clave === "bajo" && esBajo(numeroGanador)) ganancia += cant * 2;
+      if(a.clave === "alto" && esAlto(numeroGanador)) ganancia += cant * 2;
+    }else if(a.tipo === "docena"){
+      if(numeroGanador === 0) return;
+      if(docenaDe(numeroGanador) === a.clave) ganancia += cant * 3;
+    }
+  });
+  return ganancia;
+}
+
+function limpiarMesaTrasRonda(){
+  document.querySelectorAll("#tablaNumeros td, .externas button").forEach(el=>{
+    delete el.dataset.apuesta;
+    if(el.dataset.num) el.textContent = el.dataset.num;
+    else if(el.dataset.value) el.textContent = el.dataset.value;
+  });
+  historialApuestas = [];
+  actualizarTotalApostado();
+}
+
+// ---------------------- Lógica de giro ----------------------
+let animId = null;
+
+document.getElementById("spin").addEventListener("click", girar);
+document.getElementById("volverTirar").addEventListener("click", ()=>{
+  if(spinning) return;
+  document.getElementById("resultado").textContent = "";
+  document.getElementById("spin").style.display = "inline-block";
+  document.getElementById("spin").disabled = false;
+  document.getElementById("volverTirar").style.display = "none";
+  decir("🎲 ¡Nueva ronda! Coloca tus apuestas.");
+});
+
+function girar(){
+  if(spinning) return;
+  if(historialApuestas.length === 0){ alert("No hay apuestas colocadas"); return; }
+
+  decir(croupiers[currentCroupier].frases[fraseIdx% croupiers[currentCroupier].frases.length]); fraseIdx++;
+  setBotonesDuranteSpin(true);
+  document.getElementById("spin").disabled = true;
+
+  spinning = true;
+  ganadorIdx = -1;
+
+  let ruedaVel = (Math.random()*0.8 + 0.8) * 0.8;
+  let bolaVel  = ruedaVel * (Math.random()*1.2 + 2.2);
+
+  const dur = 4200 + Math.random()*1800;
+  const start = performance.now();
+
+  function stepSpin(t){
+    const elapsed = t - start;
+    const progress = Math.min(1, elapsed / dur);
+    const ease = 1 - Math.pow(1-progress, 3);
+
+    ruedaAng += ruedaVel * (1 - ease) * 2.2;
+    bolaAng  += bolaVel  * (1 - ease) * 3.0;
+
+    dibujarRuleta();
+
+    if(progress < 1){
+      animId = requestAnimationFrame(stepSpin);
+    }else{
+      // Determinar el índice ganador por la posición real tras el giro
+      ganadorIdx = idxGanadorPorAngulo(ruedaAng, bolaAng);
+
+      // Snap final suave al centro del sector del ganador
+      const targetSectorCenter = ganadorIdx * sector - Math.PI/2;
+      let currentAngle = ruedaAng + bolaAng;
+      let normalizedCurrent = currentAngle % (2 * Math.PI);
+      if(normalizedCurrent < 0) normalizedCurrent += 2 * Math.PI;
+      
+      let normalizedTarget = targetSectorCenter % (2 * Math.PI);
+      if(normalizedTarget < 0) normalizedTarget += 2 * Math.PI;
+      
+      let snapDelta = normalizedTarget - normalizedCurrent;
+      if(snapDelta > Math.PI) snapDelta -= 2 * Math.PI;
+      if(snapDelta < -Math.PI) snapDelta += 2 * Math.PI;
+      
+      // Aplicar un snap suave limitado
+      const maxSnap = sector/3;
+      snapDelta = Math.max(-maxSnap, Math.min(maxSnap, snapDelta));
+      bolaAng += snapDelta;
+      
+      dibujarRuleta();
+
+      // Mostrar resultado
+      const num = numeros[ganadorIdx];
+      document.getElementById("resultado").textContent = `Resultado: ${num} ${num===0?'(verde)':(esRojo(num)?'(rojo)':'(negro)')}`;
+
+      // Calcular pagos
+      const retorno = calcularGanancias(num);
+      if(retorno > 0){
+        saldo += retorno;
+        actualizarSaldo();
+        decir(`🏆 ¡Has ganado ${retorno - totalApostado} €!`);
+      }else{
+        decir("😬 Esta vez no hubo suerte. ¡Intenta de nuevo!");
+      }
+
+      limpiarMesaTrasRonda();
+      spinning = false;
+      document.getElementById("spin").style.display = "none";
+      const volver = document.getElementById("volverTirar");
+      volver.style.display = "inline-block";
+      volver.disabled = false;
+      setBotonesDuranteSpin(false);
+    }
+  }
+
+  animId = requestAnimationFrame(stepSpin);
+}
+
+// Inicializar dibujo y accesibilidad
+dibujarRuleta();
+document.querySelectorAll("button, td").forEach(el=>{
+  el.addEventListener("dragstart", e=>e.preventDefault());
+});
+</script>
+</body>
+</html>
