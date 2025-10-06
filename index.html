@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Ruleta Europea - Versión Final Funcional</title>
+  <title>Ruleta Europea - Vista Mejorada</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root {
@@ -33,8 +33,36 @@
     button:disabled { opacity: .5; cursor: not-allowed; background: #555; }
     .wrap { display: none; width: 100%; max-width: 1200px; margin-top: 12px; }
     .top-wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
-    .ruleta-panel { flex:1; min-width:320px; background:#0a3a19; border-radius:12px; padding:12px; box-shadow:var(--shadow); text-align:center }
-    canvas { background:#222; border-radius:50%; box-shadow:0 0 30px rgba(0,0,0,.7); max-width:90vw; height:auto; display: block; margin: 0 auto; }
+    .ruleta-panel {
+        flex:1; min-width:320px; background:#0a3a19; border-radius:12px; 
+        padding:12px; box-shadow:var(--shadow); text-align:center;
+    }
+    .ruleta-area {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px; /* Aumenta el espacio entre ruleta y croupier */
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    /* --- CAMBIO: Ruleta más grande --- */
+    canvas { 
+        background:#222; border-radius:50%; box-shadow:0 0 30px rgba(0,0,0,.7); 
+        width:500px; height:500px; display: block; 
+    }
+    .croupier-display {
+        display: none; /* Oculto por defecto */
+        text-align: center;
+    }
+    /* --- CAMBIO: Imagen del croupier ajustada --- */
+    #croupierImage {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        border: 4px solid var(--gold);
+        box-shadow: var(--shadow);
+        object-fit: cover;
+    }
     .status { display:flex; gap:12px; justify-content:center; margin-top:6px }
     #saldo, #totalApuesta { font-size:18px; font-weight:bold }
     #saldo { color:var(--warn); }
@@ -55,7 +83,6 @@
       font-size: 1.2em; font-weight: bold; color: var(--gold);
       margin-top: 10px; min-height: 24px; transition: opacity .3s;
     }
-    
     .tabla-ruleta {
         background: var(--table-bg); border: 4px solid var(--table-border);
         border-radius: 10px; padding: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
@@ -96,8 +123,8 @@
     <label for="croupierSelect">🎩 Croupier:</label>
     <select id="croupierSelect">
       <option value="">--Selecciona--</option>
-      <option value="Anna">Anna</option>
-      <option value="John">John</option>
+      <option value="Fino">Fino</option>
+      <option value="Vini">Vini</option>
       <option value="Maria">Maria</option>
     </select>
     <button id="confirmCroupier">Confirmar</button>
@@ -107,7 +134,13 @@
   <div class="wrap" id="gameWrap">
     <div class="top-wrap">
       <div class="ruleta-panel">
-        <canvas id="ruleta" width="400" height="400" aria-label="Ruleta"></canvas>
+        <div class="ruleta-area">
+          <!-- --- CAMBIO: Canvas más grande --- -->
+          <canvas id="ruleta" width="500" height="500" aria-label="Ruleta"></canvas>
+          <div id="croupierDisplay" class="croupier-display">
+              <img id="croupierImage" src="" alt="Croupier">
+          </div>
+        </div>
         <div id="bubble" aria-live="polite">Selecciona un croupier para empezar</div>
         <div id="resultado" aria-live="polite"></div>
         <div class="status">
@@ -200,11 +233,19 @@
     let ultimaApuesta = new Map();
     const MAX_APUESTA_CASILLA = 1000, MAX_APUESTA_RONDA = 5000;
 
+    const croupiers = {
+        'Fino': { img: './images.jpg' },
+        'Vini': { img: './vini.jpg' },
+        'Maria': { img: './pancha.webp' }
+    };
+
     const bubbleEl = document.getElementById("bubble"), saldoEl = document.getElementById("saldo");
     const totalApuestaEl = document.getElementById("totalApuesta"), resEl = document.getElementById("resultado");
     const spinBtn = document.getElementById("spin"), histList = document.getElementById("historialLista");
     const gameWrap = document.getElementById("gameWrap");
     const betElements = document.querySelectorAll('[data-num], [data-bet-type]');
+    const croupierDisplay = document.getElementById('croupierDisplay');
+    const croupierImage = document.getElementById('croupierImage');
 
     function decir(msg, duracion = 4000) {
       bubbleEl.textContent = msg;
@@ -226,7 +267,6 @@
     function toggleControles(disabled) {
       spinning = disabled;
       document.querySelectorAll("button, .chip, [data-num], [data-bet-type]").forEach(e => {
-          // Si el elemento es un botón dentro de una celda, deshabilita el botón.
           if (e.tagName === 'BUTTON' || e.classList.contains('chip') || e.hasAttribute('data-num')) {
              e.disabled = disabled;
           }
@@ -270,12 +310,12 @@
         ctx.fillStyle = n===0?"#0a0":reds.has(n)?"#b00":"#222"; ctx.fill();
         ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
         ctx.save(); ctx.translate(cx,cy); ctx.rotate((a0+a1)/2);
-        ctx.fillStyle="#fff"; ctx.textAlign="right"; ctx.font="bold 14px Arial";
-        ctx.fillText(n,r-10,5); ctx.restore();
+        ctx.fillStyle="#fff"; ctx.textAlign="right"; ctx.font="bold 16px Arial"; // Fuente un poco más grande
+        ctx.fillText(n,r-15,6); ctx.restore(); // Ajuste de posición del texto
       });
-      ctx.beginPath(); ctx.arc(cx,cy,40,0,2*Math.PI); ctx.fillStyle="#333"; ctx.fill();
-      let br=r-20, x=cx+Math.cos(-bolaAng)*br, y=cy+Math.sin(-bolaAng)*br;
-      ctx.beginPath(); ctx.arc(x,y,8,0,2*Math.PI); ctx.fillStyle="#fff"; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,60,0,2*Math.PI); ctx.fillStyle="#333"; ctx.fill(); // Círculo central más grande
+      let br=r-30, x=cx+Math.cos(-bolaAng)*br, y=cy+Math.sin(-bolaAng)*br; // Ajuste de la bola
+      ctx.beginPath(); ctx.arc(x,y,10,0,2*Math.PI); ctx.fillStyle="#fff"; ctx.fill(); // Bola más grande
       ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.stroke();
     }
 
@@ -473,6 +513,12 @@
       const select = document.getElementById("croupierSelect");
       if (!select.value) { alert("Por favor, selecciona un croupier."); return; }
       croupier = select.value;
+      const croupierInfo = croupiers[croupier];
+      if (croupierInfo) {
+          croupierImage.src = croupierInfo.img;
+          croupierImage.alt = `Croupier ${croupier}`;
+          croupierDisplay.style.display = 'block';
+      }
       document.getElementById("croupierSelectWrap").style.display = "none";
       gameWrap.style.display = "block";
       decir(`🎩 Croupier ${croupier} te da la bienvenida.`);
@@ -484,6 +530,7 @@
       location.reload();
     });
 
+    // Estado inicial
     drawWheel();
     actualizarSaldoUI();
     actualizarTotalApostadoUI();
