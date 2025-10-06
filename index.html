@@ -1,226 +1,282 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <title>Ruleta Europea - Vista Mejorada</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root {
-      --bg: #07270f; --txt: #fff; --gold: #ffd700; --shadow: 0 4px 12px rgba(0,0,0,.6);
-      --red: #c00; --black: #111; --green: #0a6000; --ok: #0f0; --warn: #ffcc00; --err: #ff6b6b;
-      --table-bg: #006421; --table-border: #a47d2f;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0 }
-    body {
-      display: flex; flex-direction: column; align-items: center;
-      background: var(--bg); color: var(--txt);
-      font-family: system-ui,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
-      padding: 16px; overflow-x: hidden;
-    }
-    h1,h3 { margin: .5em 0 }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center }
-    select, button {
-      padding: 10px 14px; font-size: 16px; font-weight: 600;
-      border: none; border-radius: 10px;
-    }
-    button {
-      cursor: pointer; background: var(--gold); color: #111;
-      margin: 4px; box-shadow: var(--shadow); transition: transform .05s ease;
-    }
-    button:active { transform: translateY(1px) }
-    button.secondary { background: #333; color: #fff }
-    button.ghost { background: transparent; border: 1px solid #444; color: #ddd }
-    button:disabled { opacity: .5; cursor: not-allowed; background: #555; }
-    .wrap { display: none; width: 100%; max-width: 1200px; margin-top: 12px; }
-    .top-wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
-    .ruleta-panel {
-        flex:1; min-width:320px; background:#0a3a19; border-radius:12px; 
-        padding:12px; box-shadow:var(--shadow); text-align:center;
-    }
-    .ruleta-area {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 40px; /* Aumenta el espacio entre ruleta y croupier */
-        flex-wrap: wrap;
-        margin-bottom: 20px;
-    }
-    /* --- CAMBIO: Ruleta más grande --- */
-    canvas { 
-        background:#222; border-radius:50%; box-shadow:0 0 30px rgba(0,0,0,.7); 
-        width:500px; height:500px; display: block; 
-    }
-    .croupier-display {
-        display: none; /* Oculto por defecto */
-        text-align: center;
-    }
-    /* --- CAMBIO: Imagen del croupier ajustada --- */
-    #croupierImage {
-        width: 180px;
-        height: 180px;
-        border-radius: 50%;
-        border: 4px solid var(--gold);
-        box-shadow: var(--shadow);
-        object-fit: cover;
-    }
-    .status { display:flex; gap:12px; justify-content:center; margin-top:6px }
-    #saldo, #totalApuesta { font-size:18px; font-weight:bold }
-    #saldo { color:var(--warn); }
-    #totalApuesta { color: var(--ok) }
-    .controls { margin-top:10px }
-    .fichas { margin-top:10px; background:#0c3f1e; border-radius:12px; padding:10px; text-align:center }
-    .chips-row { display:flex; gap:6px; justify-content:center; flex-wrap:wrap }
-    .chip { background:#ff0; color:#111; padding:8px 12px; border-radius:8px; cursor:pointer; transition: transform .1s; }
-    .chip:hover { transform: scale(1.05); }
-    .chip.selected { outline:3px solid #fff; transform: scale(1.1); }
-    .small { font-size:12px; opacity:.9; margin-top:4px; }
-    .mesa-wrap { margin-top:14px; text-align:center; width: 100%; }
-    .historial {
-      margin-top:12px; background:#0c3f1e; border-radius:12px; padding:10px;
-      max-height:180px; overflow-y:auto; font-size:13px;
-    }
-    #bubble {
-      font-size: 1.2em; font-weight: bold; color: var(--gold);
-      margin-top: 10px; min-height: 24px; transition: opacity .3s;
-    }
-    .tabla-ruleta {
-        background: var(--table-bg); border: 4px solid var(--table-border);
-        border-radius: 10px; padding: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-    }
-    .tabla-ruleta table { border-collapse: separate; border-spacing: 4px; width: 100%; }
-    .tabla-ruleta td {
-        height: 50px; text-align: center; vertical-align: middle; border-radius: 5px; cursor: pointer;
-        font-weight: 700; font-size: 16px; transition: transform 0.1s, box-shadow 0.1s;
-        position: relative; border: 1px solid rgba(255,255,255,0.2);
-    }
-    .tabla-ruleta td:hover { transform: scale(1.05); z-index: 10; }
-    .tabla-ruleta td.red { background: var(--red); color: #fff; }
-    .tabla-ruleta td.black { background: var(--black); color: #fff; }
-    .tabla-ruleta td.green { background: var(--green); color: #fff; }
-    .cero-cell { height: 162px !important; width: 60px; }
-    .cero-cell span { transform: rotate(-90deg); display: block; font-size: 24px; }
-    .external-bets { display: flex; gap: 4px; margin-top: 4px; }
-    .external-bets button, .external-cell button {
-        flex: 1; padding: 12px 0; font-weight: 700; background: var(--green);
-        border: 1px solid rgba(255,255,255,0.2); color: var(--txt); border-radius: 5px;
-        cursor: pointer; position: relative; width: 100%; height: 100%; margin: 0;
-    }
-    .external-bets button.red { background: var(--red); }
-    .external-bets button.black { background: var(--black); }
-    .external-cell { padding: 0; }
-    .badge {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 10, 0.9);
-        color: #000; display: flex; justify-content: center; align-items: center;
-        font-size: 10px; box-shadow: 0 0 5px #000; pointer-events: none; font-weight: bold;
-    }
-    .external-bets .badge, .external-cell .badge { width: auto; padding: 2px 8px; border-radius: 10px; }
-  </style>
+    <meta charset="utf-8" />
+    <title>Ruleta Europea - Diseño Personalizado</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: linear-gradient(to bottom, #0a2e15, #061c0c);
+            --txt: #f0f0f0;
+            --gold: #d4af37;
+            --gold-dark: #b8860b;
+            --shadow: 0 6px 15px rgba(0,0,0,.5);
+            --red: #d32f2f;
+            --black: #1a1a1a;
+            --green: #2e7d32;
+            --ok: #66bb6a;
+            --warn: #ffa726;
+            --err: #ef5350;
+            --table-bg: #004d40;
+            --table-border: #a47d2f;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0 }
+        body {
+            display: flex; flex-direction: column; align-items: center;
+            background: var(--bg); color: var(--txt);
+            font-family: 'Poppins', system-ui, Segoe UI, Roboto, Arial, sans-serif;
+            padding: 16px; min-height: 100vh;
+        }
+        h1 {
+            font-size: 2.5em;
+            color: var(--gold);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        h3 { margin: .5em 0; color: var(--gold); border-bottom: 1px solid var(--gold-dark); padding-bottom: 5px; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center }
+        select, button {
+            padding: 10px 18px; font-size: 16px; font-weight: 600;
+            border: none; border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+        }
+        button {
+            cursor: pointer;
+            background: linear-gradient(145deg, var(--gold), var(--gold-dark));
+            color: #111;
+            margin: 4px;
+            box-shadow: var(--shadow);
+            transition: all .15s ease-out;
+            border-bottom: 2px solid var(--gold-dark);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.6); }
+        button:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+        button.secondary { background: linear-gradient(145deg, #444, #222); color: #fff; border-bottom: 2px solid #111;}
+        button.ghost { background: transparent; border: 2px solid var(--gold-dark); color: var(--gold); }
+        button:disabled { opacity: .5; cursor: not-allowed; background: #555; transform: none; box-shadow: none; }
+        .wrap { display: none; width: 100%; max-width: 1300px; margin-top: 12px; }
+        .top-wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+        .ruleta-panel {
+            flex: 1; min-width: 320px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px);
+            border-radius: 16px; padding: 16px; box-shadow: var(--shadow); text-align: center;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        .ruleta-area {
+            display: flex; align-items: center; justify-content: center;
+            gap: 40px; flex-wrap: wrap; margin-bottom: 20px;
+        }
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3), 0 0 60px rgba(0,0,0,0.8);
+            width: 450px; height: 450px; display: block;
+        }
+        .croupier-display {
+            display: none; text-align: center;
+        }
+        #croupierImage {
+            width: 180px; height: 180px; border-radius: 50%;
+            border: 5px solid var(--gold); box-shadow: var(--shadow);
+            object-fit: cover;
+        }
+        .status { display: flex; gap: 16px; justify-content: center; margin-top: 6px; font-size: 20px; }
+        #saldo, #totalApuesta { font-weight: bold; background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 8px; }
+        #saldo { color: var(--warn); }
+        #totalApuesta { color: var(--ok); }
+        .controls { margin-top: 15px; }
+        .fichas { margin-top: 15px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px; }
+        .chips-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+        .chip {
+            width: 50px; height: 50px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+            color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            transition: transform .15s, box-shadow .15s;
+            border: 2px solid rgba(255,255,255,0.7);
+        }
+        .chip:hover { transform: scale(1.1); }
+        .chip.selected { transform: scale(1.15); box-shadow: 0 0 15px var(--gold); }
+        .chip[data-value="1"] { background: radial-gradient(#d32f2f, #a02020); }
+        .chip[data-value="5"] { background: radial-gradient(#1976d2, #105a9c); }
+        .chip[data-value="10"] { background: radial-gradient(#388e3c, #286c2b); }
+        .chip[data-value="50"] { background: radial-gradient(#fbc02d, #c49b00); color: #333; }
+        .chip[data-value="100"] { background: radial-gradient(#8e24aa, #6a1b9a); }
+        .chip[data-value="500"] { background: radial-gradient(#5d4037, #4e342e); }
+        .small { font-size: 12px; opacity: .8; margin-top: 12px; }
+        .mesa-wrap { margin-top: 20px; text-align: center; width: 100%; }
+        .historial {
+            margin-top: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px;
+            max-height: 200px; overflow-y: auto; font-size: 14px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        #historialLista { list-style: none; padding-left: 0;}
+        #historialLista li { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #bubble {
+            font-size: 1.3em; font-weight: bold; color: var(--gold);
+            margin-top: 10px; min-height: 30px; transition: opacity .3s, transform .3s;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .tabla-ruleta {
+            background: var(--table-bg); border: 4px solid var(--table-border);
+            border-radius: 10px; padding: 10px; box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+        .tabla-ruleta table { border-collapse: separate; border-spacing: 4px; width: 100%; }
+        .tabla-ruleta td {
+            height: 55px; text-align: center; vertical-align: middle; border-radius: 5px; cursor: pointer;
+            font-weight: 700; font-size: 18px; transition: all 0.15s;
+            position: relative; border: 1px solid rgba(255,255,255,0.1);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .tabla-ruleta td:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px var(--gold); }
+        .tabla-ruleta td.red { background: var(--red); color: #fff; }
+        .tabla-ruleta td.black { background: var(--black); color: #fff; }
+        .tabla-ruleta td.green { background: var(--green); color: #fff; }
+        .cero-cell { height: 177px !important; width: 65px; }
+        .cero-cell span { transform: rotate(-90deg); display: block; font-size: 28px; }
+        .external-cell { padding: 0; }
+        .external-cell button {
+            flex: 1; padding: 15px 0; font-weight: 700; background: var(--green);
+            border: 1px solid rgba(255,255,255,0.1); color: var(--txt); border-radius: 5px;
+            cursor: pointer; position: relative; width: 100%; height: 100%; margin: 0;
+            transition: all 0.15s;
+        }
+        .external-cell button:hover { background-color: #3b9a3f; }
+        .external-cell button.red { background: var(--red); }
+        .external-cell button.black { background: var(--black); }
+        
+        .external-bets-layout {
+            margin-top: 4px; border-collapse: separate; border-spacing: 4px; width: calc(100% - 72px); margin-left: auto;
+        }
+        .external-bets-layout td { padding: 0; vertical-align: middle; text-align: center; }
+        .external-bets-layout button {
+            width: 100%; height: 55px; margin: 0; border-radius: 5px; font-weight: 700;
+            background: var(--green); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--txt); transition: all 0.15s; font-size: 16px; text-transform: uppercase;
+            position: relative;
+        }
+        .external-bets-layout button:hover { transform: none; box-shadow: 0 0 15px var(--gold); }
+        .external-bets-layout button.red { background-color: var(--red); }
+        .external-bets-layout button.black { background-color: var(--black); }
+
+        .badge {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: auto; padding: 4px 8px; border-radius: 12px;
+            background: rgba(255, 255, 10, 0.95);
+            color: #000; display: flex; justify-content: center; align-items: center;
+            font-size: 11px; box-shadow: 0 0 8px #000; pointer-events: none; font-weight: bold;
+            border: 1px solid #fff;
+        }
+        #resultado { font-size: 1.5em; margin-top: 10px; font-weight: bold; }
+    </style>
 </head>
 <body>
-  <h1>🎰 Ruleta Europea</h1>
-  <div id="croupierSelectWrap" class="row">
-    <label for="croupierSelect">🎩 Croupier:</label>
-    <select id="croupierSelect">
-      <option value="">--Selecciona--</option>
-      <option value="Fino">Fino</option>
-      <option value="Vini">Vini</option>
-      <option value="Maria">Maria</option>
-    </select>
-    <button id="confirmCroupier">Confirmar</button>
-    <button id="resetAll" class="ghost">Reiniciar Todo</button>
-  </div>
-
-  <div class="wrap" id="gameWrap">
-    <div class="top-wrap">
-      <div class="ruleta-panel">
-        <div class="ruleta-area">
-          <!-- --- CAMBIO: Canvas más grande --- -->
-          <canvas id="ruleta" width="500" height="500" aria-label="Ruleta"></canvas>
-          <div id="croupierDisplay" class="croupier-display">
-              <img id="croupierImage" src="" alt="Croupier">
-          </div>
-        </div>
-        <div id="bubble" aria-live="polite">Selecciona un croupier para empezar</div>
-        <div id="resultado" aria-live="polite"></div>
-        <div class="status">
-          <div id="saldo">💰 Saldo: 1000 €</div>
-          <div id="totalApuesta">Apostado: 0 €</div>
-        </div>
-        <div class="controls">
-          <button id="spin">🎰 Girar</button>
-          <button id="volverTirar" class="secondary">🔄 Repetir Apuesta</button>
-          <button id="duplicarApuestas" class="secondary">✖️2 Duplicar</button>
-          <button id="quitarUltima" class="ghost">⏮️ Deshacer</button>
-          <button id="quitarTodas" class="ghost">🗑️ Limpiar</button>
-        </div>
-        <div class="fichas">
-          <h3>💰 Fichas</h3>
-          <div class="chips-row">
-            <div class="chip selected" data-value="1">1€</div>
-            <div class="chip" data-value="5">5€</div>
-            <div class="chip" data-value="10">10€</div>
-            <div class="chip" data-value="50">50€</div>
-            <div class="chip" data-value="100">100€</div>
-            <div class="chip" data-value="500">500€</div>
-          </div>
-          <div class="small">Máx 1000€ por casilla, 5000€ por ronda.</div>
-        </div>
-      </div>
+    <h1>🎰 Ruleta Europea Deluxe</h1>
+    <div id="croupierSelectWrap" class="row">
+        <label for="croupierSelect">🎩 Elige Croupier:</label>
+        <select id="croupierSelect">
+            <option value="">--Selecciona--</option>
+            <option value="Fino">Fino</option>
+            <option value="Vini">Vini</option>
+            <option value="Maria">Maria</option>
+        </select>
+        <button id="confirmCroupier">Confirmar</button>
+        <button id="resetAll" class="ghost">Reiniciar</button>
     </div>
 
-    <div class="mesa-wrap">
-      <div class="tabla-ruleta">
-        <table id="tablaNumeros">
-            <tbody>
-                <tr>
-                    <td rowspan="3" data-num="0" class="green cero-cell"><span>0</span></td>
-                    <td data-num="3" class="red">3</td><td data-num="6" class="black">6</td><td data-num="9" class="red">9</td>
-                    <td data-num="12" class="red">12</td><td data-num="15" class="black">15</td><td data-num="18" class="red">18</td>
-                    <td data-num="21" class="red">21</td><td data-num="24" class="black">24</td><td data-num="27" class="red">27</td>
-                    <td data-num="30" class="red">30</td><td data-num="33" class="black">33</td><td data-num="36" class="red">36</td>
-                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="3">2-1</button></td>
-                </tr>
-                <tr>
-                    <td data-num="2" class="black">2</td><td data-num="5" class="red">5</td><td data-num="8" class="black">8</td>
-                    <td data-num="11" class="black">11</td><td data-num="14" class="red">14</td><td data-num="17" class="black">17</td>
-                    <td data-num="20" class="black">20</td><td data-num="23" class="red">23</td><td data-num="26" class="black">26</td>
-                    <td data-num="29" class="black">29</td><td data-num="32" class="red">32</td><td data-num="35" class="black">35</td>
-                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="2">2-1</button></td>
-                </tr>
-                <tr>
-                    <td data-num="1" class="red">1</td><td data-num="4" class="black">4</td><td data-num="7" class="red">7</td>
-                    <td data-num="10" class="black">10</td><td data-num="13" class="black">13</td><td data-num="16" class="red">16</td>
-                    <td data-num="19" class="red">19</td><td data-num="22" class="black">22</td><td data-num="25" class="red">25</td>
-                    <td data-num="28" class="black">28</td><td data-num="31" class="black">31</td><td data-num="34" class="red">34</td>
-                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="1">2-1</button></td>
-                </tr>
-            </tbody>
-        </table>
-        <div class="external-bets">
-            <button data-bet-type="docena" data-bet-key="1">1st 12</button>
-            <button data-bet-type="docena" data-bet-key="2">2nd 12</button>
-            <button data-bet-type="docena" data-bet-key="3">3rd 12</button>
+    <div class="wrap" id="gameWrap">
+        <div class="top-wrap">
+            <div class="ruleta-panel">
+                 <div class="ruleta-area">
+                    <canvas id="ruleta" width="500" height="500" aria-label="Ruleta"></canvas>
+                    <div id="croupierDisplay" class="croupier-display">
+                        <img id="croupierImage" src="" alt="Croupier">
+                    </div>
+                </div>
+                <div id="bubble" aria-live="polite">Selecciona un croupier para empezar</div>
+                <div id="resultado" aria-live="polite"></div>
+                <div class="status">
+                    <div id="saldo">💰 Saldo: 1000 €</div>
+                    <div id="totalApuesta">Apostado: 0 €</div>
+                </div>
+                <div class="controls">
+                    <button id="spin">🎰 Girar</button>
+                    <button id="volverTirar" class="secondary">🔄 Repetir</button>
+                    <button id="duplicarApuestas" class="secondary">✖️2 Duplicar</button>
+                    <button id="quitarUltima" class="ghost">⏮️ Deshacer</button>
+                    <button id="quitarTodas" class="ghost">🗑️ Limpiar</button>
+                </div>
+                <div class="fichas">
+                    <h3>💰 Fichas</h3>
+                    <div class="chips-row">
+                        <div class="chip selected" data-value="1">1€</div>
+                        <div class="chip" data-value="5">5€</div>
+                        <div class="chip" data-value="10">10€</div>
+                        <div class="chip" data-value="50">50€</div>
+                        <div class="chip" data-value="100">100€</div>
+                        <div class="chip" data-value="500">500€</div>
+                    </div>
+                    <div class="small">Máx 1000€ por casilla, 5000€ por ronda.</div>
+                </div>
+            </div>
         </div>
-        <div class="external-bets">
-            <button data-bet-type="mitad" data-bet-key="bajo">1-18</button>
-            <button data-bet-type="paridad" data-bet-key="par">EVEN</button>
-            <button data-bet-type="color" data-bet-key="rojo" class="red">◆</button>
-            <button data-bet-type="color" data-bet-key="negro" class="black">◆</button>
-            <button data-bet-type="paridad" data-bet-key="impar">ODD</button>
-            <button data-bet-type="mitad" data-bet-key="alto">19-36</button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="historial">
-      <h3>🧾 Historial</h3>
-      <ul id="historialLista"></ul>
-    </div>
-  </div>
 
-  <script>
-  (function(){
+        <div class="mesa-wrap">
+            <div class="tabla-ruleta">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td rowspan="3" data-num="0" class="green cero-cell"><span>0</span></td>
+                            <td data-num="3" class="red">3</td><td data-num="6" class="black">6</td><td data-num="9" class="red">9</td>
+                            <td data-num="12" class="red">12</td><td data-num="15" class="black">15</td><td data-num="18" class="red">18</td>
+                            <td data-num="21" class="red">21</td><td data-num="24" class="black">24</td><td data-num="27" class="red">27</td>
+                            <td data-num="30" class="red">30</td><td data-num="33" class="black">33</td><td data-num="36" class="red">36</td>
+                            <td class="external-cell"><button data-bet-type="columna" data-bet-key="3">1ª Fila</button></td>
+                        </tr>
+                        <tr>
+                            <td data-num="2" class="black">2</td><td data-num="5" class="red">5</td><td data-num="8" class="black">8</td>
+                            <td data-num="11" class="black">11</td><td data-num="14" class="red">14</td><td data-num="17" class="black">17</td>
+                            <td data-num="20" class="black">20</td><td data-num="23" class="red">23</td><td data-num="26" class="black">26</td>
+                            <td data-num="29" class="black">29</td><td data-num="32" class="red">32</td><td data-num="35" class="black">35</td>
+                             <td class="external-cell"><button data-bet-type="columna" data-bet-key="2">2ª Fila</button></td>
+                        </tr>
+                        <tr>
+                            <td data-num="1" class="red">1</td><td data-num="4" class="black">4</td><td data-num="7" class="red">7</td>
+                            <td data-num="10" class="black">10</td><td data-num="13" class="black">13</td><td data-num="16" class="red">16</td>
+                            <td data-num="19" class="red">19</td><td data-num="22" class="black">22</td><td data-num="25" class="red">25</td>
+                            <td data-num="28" class="black">28</td><td data-num="31" class="black">31</td><td data-num="34" class="red">34</td>
+                             <td class="external-cell"><button data-bet-type="columna" data-bet-key="1">3ª Fila</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="external-bets-layout">
+                     <tbody>
+                        <tr>
+                            <td colspan="4"><button data-bet-type="docena" data-bet-key="1">1ª Docena</button></td>
+                            <td colspan="4"><button data-bet-type="docena" data-bet-key="2">2ª Docena</button></td>
+                            <td colspan="4"><button data-bet-type="docena" data-bet-key="3">3ª Docena</button></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"><button data-bet-type="mitad" data-bet-key="bajo">1-18</button></td>
+                            <td colspan="2"><button data-bet-type="paridad" data-bet-key="par">PAR</button></td>
+                            <td colspan="2"><button data-bet-type="color" data-bet-key="rojo" class="red">Rojo</button></td>
+                            <td colspan="2"><button data-bet-type="color" data-bet-key="negro" class="black">Negro</button></td>
+                            <td colspan="2"><button data-bet-type="paridad" data-bet-key="impar">IMPAR</button></td>
+                            <td colspan="2"><button data-bet-type="mitad" data-bet-key="alto">19-36</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="historial">
+            <h3>🧾 Historial de Jugadas</h3>
+            <ul id="historialLista"></ul>
+        </div>
+    </div>
+
+<script>
+(function(){
     const canvas = document.getElementById("ruleta"), ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2;
     const nums = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -248,46 +304,48 @@
     const croupierImage = document.getElementById('croupierImage');
 
     function decir(msg, duracion = 4000) {
-      bubbleEl.textContent = msg;
-      bubbleEl.style.opacity = 1;
-      setTimeout(() => { bubbleEl.style.opacity = 0; }, duracion);
+        bubbleEl.textContent = msg;
+        bubbleEl.style.opacity = 1;
+        bubbleEl.style.transform = 'translateY(0)';
+        setTimeout(() => {
+            bubbleEl.style.opacity = 0;
+            bubbleEl.style.transform = 'translateY(-10px)';
+        }, duracion);
     }
     
     function actualizarSaldoUI() {
-      saldoEl.textContent = `💰 Saldo: ${saldo} €`;
-      localStorage.setItem("saldo_ruleta", saldo);
+        saldoEl.textContent = `💰 Saldo: ${saldo} €`;
+        localStorage.setItem("saldo_ruleta", saldo);
     }
 
     function actualizarTotalApostadoUI() {
-      const total = Array.from(apuestas.values()).reduce((sum, bet) => sum + bet.amt, 0);
-      totalApuestaEl.textContent = `Apostado: ${total} €`;
-      return total;
+        const total = Array.from(apuestas.values()).reduce((sum, bet) => sum + bet.amt, 0);
+        totalApuestaEl.textContent = `Apostado: ${total} €`;
+        return total;
     }
 
     function toggleControles(disabled) {
-      spinning = disabled;
-      document.querySelectorAll("button, .chip, [data-num], [data-bet-type]").forEach(e => {
-          if (e.tagName === 'BUTTON' || e.classList.contains('chip') || e.hasAttribute('data-num')) {
-             e.disabled = disabled;
-          }
-      });
-      document.getElementById('croupierSelect').disabled = disabled;
-      document.getElementById('resetAll').disabled = disabled;
+        spinning = disabled;
+        document.querySelectorAll("button, .chip, [data-num], [data-bet-type], select").forEach(e => {
+             if (e.id !== 'resetAll' && e.id !== 'confirmCroupier') {
+                e.disabled = disabled;
+            }
+        });
     }
     
     function renderizarBadge(el, valor) {
-      let badge = el.querySelector(".badge");
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "badge";
-        el.appendChild(badge);
-      }
-      badge.textContent = `${valor}`;
+        let badge = el.querySelector(".badge");
+        if (!badge) {
+            badge = document.createElement("span");
+            badge.className = "badge";
+            el.appendChild(badge);
+        }
+        badge.textContent = `${valor}€`;
     }
 
     function limpiarBadge(el) {
-      const badge = el.querySelector(".badge");
-      if (badge) badge.remove();
+        const badge = el.querySelector(".badge");
+        if (badge) badge.remove();
     }
     
     function limpiarTodosLosBadges() {
@@ -295,28 +353,85 @@
     }
 
     function anadirHistorial(msg) {
-      const li = document.createElement("li");
-      li.innerHTML = msg;
-      histList.prepend(li);
-      if (histList.childElementCount > 50) histList.removeChild(histList.lastChild);
+        const li = document.createElement("li");
+        li.innerHTML = msg;
+        histList.prepend(li);
+        if (histList.childElementCount > 50) histList.removeChild(histList.lastChild);
     }
-
+    
     function drawWheel(){
-      ctx.clearRect(0,0,W,H);
-      let r=Math.min(W,H)/2-10;
-      nums.forEach((n,i)=>{
-        let a0=i*sector, a1=a0+sector;
-        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath();
-        ctx.fillStyle = n===0?"#0a0":reds.has(n)?"#b00":"#222"; ctx.fill();
-        ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
-        ctx.save(); ctx.translate(cx,cy); ctx.rotate((a0+a1)/2);
-        ctx.fillStyle="#fff"; ctx.textAlign="right"; ctx.font="bold 16px Arial"; // Fuente un poco más grande
-        ctx.fillText(n,r-15,6); ctx.restore(); // Ajuste de posición del texto
-      });
-      ctx.beginPath(); ctx.arc(cx,cy,60,0,2*Math.PI); ctx.fillStyle="#333"; ctx.fill(); // Círculo central más grande
-      let br=r-30, x=cx+Math.cos(-bolaAng)*br, y=cy+Math.sin(-bolaAng)*br; // Ajuste de la bola
-      ctx.beginPath(); ctx.arc(x,y,10,0,2*Math.PI); ctx.fillStyle="#fff"; ctx.fill(); // Bola más grande
-      ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.stroke();
+        ctx.clearRect(0, 0, W, H);
+        const r = W / 2;
+
+        const woodGradient = ctx.createRadialGradient(cx, cy, r - 40, cx, cy, r);
+        woodGradient.addColorStop(0, '#8c5a2b');
+        woodGradient.addColorStop(1, '#593a1a');
+        ctx.fillStyle = woodGradient;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fill();
+
+        const innerRadius = r - 20;
+
+        nums.forEach((n, i) => {
+            const a0 = i * sector, a1 = a0 + sector;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, innerRadius, a0, a1);
+            ctx.closePath();
+            ctx.fillStyle = n === 0 ? "#2e7d32" : reds.has(n) ? "#d32f2f" : "#1a1a1a";
+            ctx.fill();
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate((a0 + a1) / 2);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 18px Poppins";
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            ctx.fillText(n, innerRadius - 15, 0);
+            ctx.restore();
+        });
+
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2;
+        nums.forEach((n, i) => {
+             const a0 = i * sector;
+             ctx.save();
+             ctx.translate(cx,cy);
+             ctx.rotate(a0);
+             ctx.beginPath();
+             ctx.moveTo(innerRadius - 40, 0);
+             ctx.lineTo(innerRadius, 0);
+             ctx.stroke();
+             ctx.restore();
+        });
+
+        const centerRadius = 60;
+        const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, centerRadius);
+        centerGrad.addColorStop(0, '#666');
+        centerGrad.addColorStop(0.8, '#333');
+        centerGrad.addColorStop(1, '#111');
+        ctx.fillStyle = centerGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, centerRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.beginPath();
+        ctx.arc(cx - 15, cy - 20, 40, 0, 2 * Math.PI);
+        ctx.fill();
+
+        const ballRadius = r - 60;
+        const x = cx + Math.cos(-bolaAng) * ballRadius;
+        const y = cy + Math.sin(-bolaAng) * ballRadius;
+        const ballGrad = ctx.createRadialGradient(x-3, y-3, 1, x, y, 12);
+        ballGrad.addColorStop(0, '#fff');
+        ballGrad.addColorStop(1, '#ccc');
+        ctx.fillStyle = ballGrad;
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, 2 * Math.PI);
+        ctx.fill();
     }
 
     function getNumeroDesdeAngulo() {
@@ -352,7 +467,8 @@
     }
 
     function finalizarRonda(n) {
-      resEl.textContent = `🎉 ¡Número: ${n}!`;
+      const colorHex = n === 0 ? 'var(--ok)' : reds.has(n) ? 'var(--err)' : 'var(--txt)';
+      resEl.innerHTML = `🎉 Número: <strong style="color:${colorHex}; font-size:1.2em;">${n}</strong>`;
       let ganancia = 0;
       let totalPerdido = actualizarTotalApostadoUI();
       apuestas.forEach(apuesta => {
@@ -368,7 +484,7 @@
             const col = n % 3;
             const targetCol = Number(key);
             if ((col === 1 && targetCol === 1) || (col === 2 && targetCol === 2) || (col === 0 && targetCol === 3)) {
-               esGanadora = true;
+                esGanadora = true;
             }
           }
         }
@@ -383,10 +499,10 @@
       let gananciaNeta = ganancia - totalPerdido;
       if (ganancia > 0) {
         decir(`🏆 ¡Ganaste ${ganancia} €!`);
-        anadirHistorial(`✅ ${n} (Ganancia neta: +${gananciaNeta} €)`);
+        anadirHistorial(`✅ ${n} (Ganancia neta: <span style="color:var(--ok);">+${gananciaNeta} €</span>)`);
       } else {
-        decir(`🤔 ${croupier} dice: Mejor suerte la próxima vez.`);
-        anadirHistorial(`❌ ${n} (Pérdida: -${totalPerdido} €)`);
+        decir(`🤔 ${croupier} dice: "Mejor suerte la próxima vez."`);
+        anadirHistorial(`❌ ${n} (Pérdida: <span style="color:var(--err);">${-totalPerdido} €</span>)`);
       }
       ultimaApuesta = new Map(apuestas);
       apuestas.clear();
@@ -400,7 +516,8 @@
       const totalApostado = actualizarTotalApostadoUI();
       if (spinning || totalApostado === 0) return;
       toggleControles(true);
-      decir(`🎲 ${croupier} dice: ¡No va más!`);
+      decir(`🎲 ${croupier} dice: "¡No va más!"`);
+      resEl.textContent = "Girando...";
       animarGiro();
     });
     
@@ -417,10 +534,10 @@
         const totalApostado = actualizarTotalApostadoUI();
         const amt = selChip;
         if (saldo < amt) { decir("❌ Saldo insuficiente."); return; }
-        if (totalApostado + amt > MAX_APUESTA_RONDA) { decir("❌ Límite de ronda superado."); return; }
+        if (totalApostado + amt > MAX_APUESTA_RONDA) { decir("❌ Límite de apuesta por ronda superado."); return; }
         const betId = targetElement.dataset.betId;
         const apuestaActual = apuestas.get(betId) || { type, key, amt: 0, el: targetElement };
-        if (apuestaActual.amt + amt > MAX_APUESTA_CASILLA) { decir("❌ Límite por casilla superado."); return; }
+        if (apuestaActual.amt + amt > MAX_APUESTA_CASILLA) { decir("❌ Límite de apuesta por casilla superado."); return; }
         
         apuestaActual.amt += amt;
         apuestas.set(betId, apuestaActual);
@@ -468,16 +585,17 @@
       limpiarTodosLosBadges();
       actualizarSaldoUI();
       actualizarTotalApostadoUI();
-      anadirHistorial("🗑️ Todas las apuestas limpiadas");
+      anadirHistorial("🗑️ Todas las apuestas han sido retiradas.");
     });
 
     document.getElementById("duplicarApuestas").addEventListener("click", () => {
       const totalApostado = actualizarTotalApostadoUI();
-      if (spinning || totalApostado === 0 || saldo < totalApostado) return;
-      if (totalApostado * 2 > MAX_APUESTA_RONDA) return;
+      if (spinning || totalApostado === 0) return;
+      if (saldo < totalApostado) { decir("❌ Saldo insuficiente para duplicar."); return; }
+      if (totalApostado * 2 > MAX_APUESTA_RONDA) { decir("❌ Duplicar excede el límite de la ronda."); return; }
       let puedeDuplicar = true;
       apuestas.forEach(apuesta => { if (apuesta.amt * 2 > MAX_APUESTA_CASILLA) puedeDuplicar = false; });
-      if (!puedeDuplicar) return;
+      if (!puedeDuplicar) { decir("❌ Duplicar excede el límite de una casilla."); return; }
 
       saldo -= totalApostado;
       apuestas.forEach((apuesta, betId) => {
@@ -493,20 +611,20 @@
     document.getElementById("volverTirar").addEventListener("click", () => {
         if(spinning || ultimaApuesta.size === 0) return;
         const totalUltimaApuesta = Array.from(ultimaApuesta.values()).reduce((sum, bet) => sum + bet.amt, 0);
-        if(saldo < totalUltimaApuesta) return;
+        if(saldo < totalUltimaApuesta) { decir("❌ Saldo insuficiente para repetir la apuesta."); return; }
+        
         document.getElementById("quitarTodas").click();
+        
         ultimaApuesta.forEach((apuesta, betId) => {
             const { type, key, amt, el } = apuesta;
-            const apuestaActual = apuestas.get(betId) || { type, key, amt: 0, el };
-            apuestaActual.amt += amt;
-            apuestas.set(betId, apuestaActual);
+            apuestas.set(betId, { type, key, amt, el });
             historialApuestas.push({ betId, amt });
             saldo -= amt;
-            renderizarBadge(el, apuestaActual.amt);
+            renderizarBadge(el, amt);
         });
         actualizarSaldoUI();
         actualizarTotalApostadoUI();
-        anadirHistorial("🔄 Apuesta anterior repetida.");
+        anadirHistorial("🔄 Apostando lo mismo que la ronda anterior.");
     });
 
     document.getElementById("confirmCroupier").addEventListener("click", () => {
@@ -521,11 +639,11 @@
       }
       document.getElementById("croupierSelectWrap").style.display = "none";
       gameWrap.style.display = "block";
-      decir(`🎩 Croupier ${croupier} te da la bienvenida.`);
+      decir(`🎩 ${croupier} te da la bienvenida. ¡Hagan sus apuestas!`);
     });
 
     document.getElementById("resetAll").addEventListener("click", () => {
-      if (!confirm("¿Reiniciar todo el juego?")) return;
+      if (!confirm("¿Estás seguro de que quieres reiniciar todo el juego? Se perderá tu saldo guardado.")) return;
       localStorage.removeItem("saldo_ruleta");
       location.reload();
     });
@@ -534,10 +652,9 @@
     drawWheel();
     actualizarSaldoUI();
     actualizarTotalApostadoUI();
-    toggleControles(false);
     gameWrap.style.display = "none";
     document.getElementById("croupierSelectWrap").style.display = "flex";
-  })();
-  </script>
+})();
+</script>
 </body>
 </html>
