@@ -2,19 +2,20 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Ruleta Europea - Mesa en Tabla</title>
+  <title>Ruleta Europea - Versión Final Funcional</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root {
       --bg: #07270f; --txt: #fff; --gold: #ffd700; --shadow: 0 4px 12px rgba(0,0,0,.6);
-      --red: #900; --black: #111; --green: #0a6000; --ok: #0f0; --warn: #ffcc00; --err: #ff6b6b;
+      --red: #c00; --black: #111; --green: #0a6000; --ok: #0f0; --warn: #ffcc00; --err: #ff6b6b;
+      --table-bg: #006421; --table-border: #a47d2f;
     }
     * { box-sizing: border-box; margin: 0; padding: 0 }
     body {
       display: flex; flex-direction: column; align-items: center;
       background: var(--bg); color: var(--txt);
       font-family: system-ui,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
-      padding: 16px; overflow: auto;
+      padding: 16px; overflow-x: hidden;
     }
     h1,h3 { margin: .5em 0 }
     .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center }
@@ -29,61 +30,64 @@
     button:active { transform: translateY(1px) }
     button.secondary { background: #333; color: #fff }
     button.ghost { background: transparent; border: 1px solid #444; color: #ddd }
-    button:disabled { opacity: .5; cursor: not-allowed }
-    .legend { font-size: 13px; opacity: .9; margin-top: 8px; }
-    .wrap { display: none; width: 100%; max-width: 1000px; margin-top: 12px }
+    button:disabled { opacity: .5; cursor: not-allowed; background: #555; }
+    .wrap { display: none; width: 100%; max-width: 1200px; margin-top: 12px; }
     .top-wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
     .ruleta-panel { flex:1; min-width:320px; background:#0a3a19; border-radius:12px; padding:12px; box-shadow:var(--shadow); text-align:center }
-    canvas { background:#222; border-radius:50%; box-shadow:0 0 30px rgba(0,0,0,.7); max-width:90vw; height:auto }
+    canvas { background:#222; border-radius:50%; box-shadow:0 0 30px rgba(0,0,0,.7); max-width:90vw; height:auto; display: block; margin: 0 auto; }
     .status { display:flex; gap:12px; justify-content:center; margin-top:6px }
-    #saldo { font-size:18px; color:var(--warn); font-weight:bold }
-    #totalApuesta { font-size:16px; color:var(--ok); font-weight:bold }
+    #saldo, #totalApuesta { font-size:18px; font-weight:bold }
+    #saldo { color:var(--warn); }
+    #totalApuesta { color: var(--ok) }
     .controls { margin-top:10px }
     .fichas { margin-top:10px; background:#0c3f1e; border-radius:12px; padding:10px; text-align:center }
     .chips-row { display:flex; gap:6px; justify-content:center; flex-wrap:wrap }
-    .chip { background:#ff0; color:#111; padding:8px 12px; border-radius:8px; cursor:pointer }
-    .chip.selected { outline:3px solid #fff }
-    .small { font-size:12px; opacity:.9; margin-top:4px }
-    .mesa-wrap { margin-top:14px; text-align:center }
-    .tabla-ruleta {
-      background:#14351b; padding:16px; border-radius:16px;
-      box-shadow:0 4px 16px rgba(0,0,0,0.6); overflow:auto; margin-bottom:12px;
-    }
-    .tabla-ruleta table {
-      border-collapse: separate; border-spacing:6px; width:100%;
-    }
-    .tabla-ruleta td {
-      width:60px; height:60px; text-align:center; vertical-align:middle;
-      border-radius:8px; cursor:pointer; font-weight:700;
-      transition:transform .1s,box-shadow .1s; position:relative;
-    }
-    .tabla-ruleta td.red { background:var(--red); color:#fff }
-    .tabla-ruleta td.black { background:var(--black); color:#fff }
-    .tabla-ruleta td.green { background:var(--green); color:#fff }
-    .tabla-ruleta td:hover {
-      transform:translateY(-2px); box-shadow:0 2px 8px rgba(0,0,0,0.5);
-    }
-    .badge {
-      position:absolute; bottom:6px; right:6px;
-      background:rgba(255,255,255,.9); color:#111;
-      padding:4px 8px; border-radius:8px; font-size:12px; font-weight:700;
-    }
-    .externas {
-      display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:8px;
-    }
-    .externas button {
-      padding:8px 14px; border-radius:8px; font-weight:600;
-      transition:transform .1s,box-shadow .1s;
-    }
-    .externas button:hover {
-      transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    }
-    .externas .red { background:var(--red); color:#fff }
-    .externas .black { background:var(--black); color:#fff }
+    .chip { background:#ff0; color:#111; padding:8px 12px; border-radius:8px; cursor:pointer; transition: transform .1s; }
+    .chip:hover { transform: scale(1.05); }
+    .chip.selected { outline:3px solid #fff; transform: scale(1.1); }
+    .small { font-size:12px; opacity:.9; margin-top:4px; }
+    .mesa-wrap { margin-top:14px; text-align:center; width: 100%; }
     .historial {
       margin-top:12px; background:#0c3f1e; border-radius:12px; padding:10px;
       max-height:180px; overflow-y:auto; font-size:13px;
     }
+    #bubble {
+      font-size: 1.2em; font-weight: bold; color: var(--gold);
+      margin-top: 10px; min-height: 24px; transition: opacity .3s;
+    }
+    
+    .tabla-ruleta {
+        background: var(--table-bg); border: 4px solid var(--table-border);
+        border-radius: 10px; padding: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+    .tabla-ruleta table { border-collapse: separate; border-spacing: 4px; width: 100%; }
+    .tabla-ruleta td {
+        height: 50px; text-align: center; vertical-align: middle; border-radius: 5px; cursor: pointer;
+        font-weight: 700; font-size: 16px; transition: transform 0.1s, box-shadow 0.1s;
+        position: relative; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .tabla-ruleta td:hover { transform: scale(1.05); z-index: 10; }
+    .tabla-ruleta td.red { background: var(--red); color: #fff; }
+    .tabla-ruleta td.black { background: var(--black); color: #fff; }
+    .tabla-ruleta td.green { background: var(--green); color: #fff; }
+    .cero-cell { height: 162px !important; width: 60px; }
+    .cero-cell span { transform: rotate(-90deg); display: block; font-size: 24px; }
+    .external-bets { display: flex; gap: 4px; margin-top: 4px; }
+    .external-bets button, .external-cell button {
+        flex: 1; padding: 12px 0; font-weight: 700; background: var(--green);
+        border: 1px solid rgba(255,255,255,0.2); color: var(--txt); border-radius: 5px;
+        cursor: pointer; position: relative; width: 100%; height: 100%; margin: 0;
+    }
+    .external-bets button.red { background: var(--red); }
+    .external-bets button.black { background: var(--black); }
+    .external-cell { padding: 0; }
+    .badge {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 10, 0.9);
+        color: #000; display: flex; justify-content: center; align-items: center;
+        font-size: 10px; box-shadow: 0 0 5px #000; pointer-events: none; font-weight: bold;
+    }
+    .external-bets .badge, .external-cell .badge { width: auto; padding: 2px 8px; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -92,43 +96,42 @@
     <label for="croupierSelect">🎩 Croupier:</label>
     <select id="croupierSelect">
       <option value="">--Selecciona--</option>
-      <option value="anna">Anna</option>
-      <option value="john">John</option>
-      <option value="maria">Maria</option>
+      <option value="Anna">Anna</option>
+      <option value="John">John</option>
+      <option value="Maria">Maria</option>
     </select>
     <button id="confirmCroupier">Confirmar</button>
-    <button id="resetAll" class="ghost">Reiniciar</button>
-    <div class="legend">🔧 Bola: 8–12 vueltas. Tabla en varias filas.</div>
+    <button id="resetAll" class="ghost">Reiniciar Todo</button>
   </div>
 
   <div class="wrap" id="gameWrap">
     <div class="top-wrap">
       <div class="ruleta-panel">
-        <canvas id="ruleta" width="500" height="500" aria-label="Ruleta"></canvas>
-        <div class="controls">
-          <button id="spin">🎰 Girar</button>
-          <button id="volverTirar" class="secondary" style="display:none;">🔄 Repetir</button>
-          <button id="quitarUltima" class="secondary">⏮️ Deshacer</button>
-          <button id="quitarTodas" class="secondary">🗑️ Limpiar</button>
-          <button id="duplicarApuestas" class="ghost">✖️2 Duplicar</button>
-        </div>
+        <canvas id="ruleta" width="400" height="400" aria-label="Ruleta"></canvas>
+        <div id="bubble" aria-live="polite">Selecciona un croupier para empezar</div>
         <div id="resultado" aria-live="polite"></div>
-        <div id="debug">Debug: listo</div>
         <div class="status">
           <div id="saldo">💰 Saldo: 1000 €</div>
-          <div id="totalApuesta">Total apostado: 0 €</div>
+          <div id="totalApuesta">Apostado: 0 €</div>
+        </div>
+        <div class="controls">
+          <button id="spin">🎰 Girar</button>
+          <button id="volverTirar" class="secondary">🔄 Repetir Apuesta</button>
+          <button id="duplicarApuestas" class="secondary">✖️2 Duplicar</button>
+          <button id="quitarUltima" class="ghost">⏮️ Deshacer</button>
+          <button id="quitarTodas" class="ghost">🗑️ Limpiar</button>
         </div>
         <div class="fichas">
           <h3>💰 Fichas</h3>
           <div class="chips-row">
-            <div class="chip selected" data-value="1">1 €</div>
-            <div class="chip" data-value="5">5 €</div>
-            <div class="chip" data-value="10">10 €</div>
-            <div class="chip" data-value="50">50 €</div>
-            <div class="chip" data-value="100">100 €</div>
-            <div class="chip" data-value="500">500 €</div>
+            <div class="chip selected" data-value="1">1€</div>
+            <div class="chip" data-value="5">5€</div>
+            <div class="chip" data-value="10">10€</div>
+            <div class="chip" data-value="50">50€</div>
+            <div class="chip" data-value="100">100€</div>
+            <div class="chip" data-value="500">500€</div>
           </div>
-          <div class="small">Máx 1000 € casilla, 5000 € ronda. No apostar si saldo ≤ 0.</div>
+          <div class="small">Máx 1000€ por casilla, 5000€ por ronda.</div>
         </div>
       </div>
     </div>
@@ -136,30 +139,47 @@
     <div class="mesa-wrap">
       <div class="tabla-ruleta">
         <table id="tablaNumeros">
-          <tr>
-            <td data-num="0" class="green">0</td><td data-num="32" class="red">32</td><td data-num="15" class="black">15</td><td data-num="19" class="red">19</td><td data-num="4" class="black">4</td><td data-num="21" class="red">21</td><td data-num="2" class="black">2</td><td data-num="25" class="red">25</td><td data-num="17" class="black">17</td><td data-num="34" class="red">34</td><td data-num="6" class="black">6</td><td data-num="27" class="red">27</td><td data-num="13" class="black">13</td>
-          </tr>
-          <tr>
-            <td data-num="36" class="red">36</td><td data-num="11" class="black">11</td><td data-num="30" class="red">30</td><td data-num="8" class="black">8</td><td data-num="23" class="red">23</td><td data-num="10" class="black">10</td><td data-num="5" class="red">5</td><td data-num="24" class="black">24</td><td data-num="16" class="red">16</td><td data-num="33" class="black">33</td><td data-num="1" class="red">1</td><td data-num="20" class="black">20</td><td data-num="14" class="red">14</td>
-          </tr>
-          <tr>
-            <td data-num="31" class="black">31</td><td data-num="9" class="red">9</td><td data-num="22" class="black">22</td><td data-num="18" class="red">18</td><td data-num="29" class="black">29</td><td data-num="7" class="red">7</td><td data-num="28" class="black">28</td><td data-num="12" class="red">12</td><td data-num="35" class="black">35</td><td data-num="3" class="red">3</td><td data-num="26" class="black">26</td>
-          </tr>
+            <tbody>
+                <tr>
+                    <td rowspan="3" data-num="0" class="green cero-cell"><span>0</span></td>
+                    <td data-num="3" class="red">3</td><td data-num="6" class="black">6</td><td data-num="9" class="red">9</td>
+                    <td data-num="12" class="red">12</td><td data-num="15" class="black">15</td><td data-num="18" class="red">18</td>
+                    <td data-num="21" class="red">21</td><td data-num="24" class="black">24</td><td data-num="27" class="red">27</td>
+                    <td data-num="30" class="red">30</td><td data-num="33" class="black">33</td><td data-num="36" class="red">36</td>
+                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="3">2-1</button></td>
+                </tr>
+                <tr>
+                    <td data-num="2" class="black">2</td><td data-num="5" class="red">5</td><td data-num="8" class="black">8</td>
+                    <td data-num="11" class="black">11</td><td data-num="14" class="red">14</td><td data-num="17" class="black">17</td>
+                    <td data-num="20" class="black">20</td><td data-num="23" class="red">23</td><td data-num="26" class="black">26</td>
+                    <td data-num="29" class="black">29</td><td data-num="32" class="red">32</td><td data-num="35" class="black">35</td>
+                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="2">2-1</button></td>
+                </tr>
+                <tr>
+                    <td data-num="1" class="red">1</td><td data-num="4" class="black">4</td><td data-num="7" class="red">7</td>
+                    <td data-num="10" class="black">10</td><td data-num="13" class="black">13</td><td data-num="16" class="red">16</td>
+                    <td data-num="19" class="red">19</td><td data-num="22" class="black">22</td><td data-num="25" class="red">25</td>
+                    <td data-num="28" class="black">28</td><td data-num="31" class="black">31</td><td data-num="34" class="red">34</td>
+                    <td class="external-cell"><button data-bet-type="columna" data-bet-key="1">2-1</button></td>
+                </tr>
+            </tbody>
         </table>
-      </div>
-      <div class="externas">
-        <button data-bet="color" data-value="rojo" class="red">Rojo</button>
-        <button data-bet="color" data-value="negro" class="black">Negro</button>
-        <button data-bet="paridad" data-value="par">Par</button>
-        <button data-bet="paridad" data-value="impar">Impar</button>
-        <button data-bet="mitad" data-value="bajo">1-18</button>
-        <button data-bet="mitad" data-value="alto">19-36</button>
-        <button data-bet="docena" data-value="1">1-12</button>
-        <button data-bet="docena" data-value="2">13-24</button>
-        <button data-bet="docena" data-value="3">25-36</button>
+        <div class="external-bets">
+            <button data-bet-type="docena" data-bet-key="1">1st 12</button>
+            <button data-bet-type="docena" data-bet-key="2">2nd 12</button>
+            <button data-bet-type="docena" data-bet-key="3">3rd 12</button>
+        </div>
+        <div class="external-bets">
+            <button data-bet-type="mitad" data-bet-key="bajo">1-18</button>
+            <button data-bet-type="paridad" data-bet-key="par">EVEN</button>
+            <button data-bet-type="color" data-bet-key="rojo" class="red">◆</button>
+            <button data-bet-type="color" data-bet-key="negro" class="black">◆</button>
+            <button data-bet-type="paridad" data-bet-key="impar">ODD</button>
+            <button data-bet-type="mitad" data-bet-key="alto">19-36</button>
+        </div>
       </div>
     </div>
-
+    
     <div class="historial">
       <h3>🧾 Historial</h3>
       <ul id="historialLista"></ul>
@@ -168,30 +188,80 @@
 
   <script>
   (function(){
-    const canvas=document.getElementById("ruleta"), ctx=canvas.getContext("2d");
-    const W=500,H=500,cx=W/2,cy=H/2;
-    const nums=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-    const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-    const sector=2*Math.PI/nums.length;
-    let bolaAng=0, spinning=false;
-    let saldo=parseInt(localStorage.getItem("saldo_ruleta")||"1000",10), selChip=1;
-    let bets=[], totalBet=0;
-    const MAX_C=1000, MAX_R=5000;
+    const canvas = document.getElementById("ruleta"), ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2;
+    const nums = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+    const reds = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+    const sector = 2 * Math.PI / nums.length;
+    let bolaAng = 0, spinning = false, croupier = '';
+    let saldo = parseInt(localStorage.getItem("saldo_ruleta") || "1000", 10), selChip = 1;
+    let apuestas = new Map();
+    let historialApuestas = [];
+    let ultimaApuesta = new Map();
+    const MAX_APUESTA_CASILLA = 1000, MAX_APUESTA_RONDA = 5000;
 
-    const bubble=document.getElementById("bubble"), saldoEl=document.getElementById("saldo");
-    const totEl=document.getElementById("totalApuesta"), resEl=document.getElementById("resultado");
-    const dbgEl=document.getElementById("debug"), spinBtn=document.getElementById("spin");
-    const repBtn=document.getElementById("volverTirar"), histList=document.getElementById("historialLista");
+    const bubbleEl = document.getElementById("bubble"), saldoEl = document.getElementById("saldo");
+    const totalApuestaEl = document.getElementById("totalApuesta"), resEl = document.getElementById("resultado");
+    const spinBtn = document.getElementById("spin"), histList = document.getElementById("historialLista");
+    const gameWrap = document.getElementById("gameWrap");
+    const betElements = document.querySelectorAll('[data-num], [data-bet-type]');
 
-    function decir(m){ bubble.textContent=m; }
-    function updSaldo(){ saldoEl.textContent=`💰 Saldo: ${saldo} €`; localStorage.setItem("saldo_ruleta",saldo); }
-    function updTotal(){ totalBet=bets.reduce((a,b)=>a+b.amt,0); totEl.textContent=`Total apostado: ${totalBet} €`; }
-    function toggle(dis){ document.querySelectorAll(".chip,#tablaNumeros td,.externas button,#quitarUltima,#quitarTodas,#duplicarApuestas,#resetAll").forEach(e=>e.disabled=dis); }
-    function mkBadge(e,v){ let b=e.querySelector(".badge"); if(!b){ b=document.createElement("span"); b.className="badge"; e.appendChild(b);} b.textContent=`€${v}`; }
-    function clrBadge(e){ let b=e.querySelector(".badge"); if(b) b.remove(); }
-    function addHist(m){ let li=document.createElement("li"); li.innerHTML=m; histList.prepend(li); if(histList.childElementCount>50) histList.removeChild(histList.lastChild); }
+    function decir(msg, duracion = 4000) {
+      bubbleEl.textContent = msg;
+      bubbleEl.style.opacity = 1;
+      setTimeout(() => { bubbleEl.style.opacity = 0; }, duracion);
+    }
+    
+    function actualizarSaldoUI() {
+      saldoEl.textContent = `💰 Saldo: ${saldo} €`;
+      localStorage.setItem("saldo_ruleta", saldo);
+    }
 
-    function draw(){
+    function actualizarTotalApostadoUI() {
+      const total = Array.from(apuestas.values()).reduce((sum, bet) => sum + bet.amt, 0);
+      totalApuestaEl.textContent = `Apostado: ${total} €`;
+      return total;
+    }
+
+    function toggleControles(disabled) {
+      spinning = disabled;
+      document.querySelectorAll("button, .chip, [data-num], [data-bet-type]").forEach(e => {
+          // Si el elemento es un botón dentro de una celda, deshabilita el botón.
+          if (e.tagName === 'BUTTON' || e.classList.contains('chip') || e.hasAttribute('data-num')) {
+             e.disabled = disabled;
+          }
+      });
+      document.getElementById('croupierSelect').disabled = disabled;
+      document.getElementById('resetAll').disabled = disabled;
+    }
+    
+    function renderizarBadge(el, valor) {
+      let badge = el.querySelector(".badge");
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "badge";
+        el.appendChild(badge);
+      }
+      badge.textContent = `${valor}`;
+    }
+
+    function limpiarBadge(el) {
+      const badge = el.querySelector(".badge");
+      if (badge) badge.remove();
+    }
+    
+    function limpiarTodosLosBadges() {
+        document.querySelectorAll('.badge').forEach(b => b.remove());
+    }
+
+    function anadirHistorial(msg) {
+      const li = document.createElement("li");
+      li.innerHTML = msg;
+      histList.prepend(li);
+      if (histList.childElementCount > 50) histList.removeChild(histList.lastChild);
+    }
+
+    function drawWheel(){
       ctx.clearRect(0,0,W,H);
       let r=Math.min(W,H)/2-10;
       nums.forEach((n,i)=>{
@@ -209,114 +279,217 @@
       ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.stroke();
     }
 
-    function getNum(){
-      let ang=(-bolaAng)%(2*Math.PI); if(ang<0) ang+=2*Math.PI;
-      let idx=Math.floor(ang/sector)%nums.length; dbgEl.textContent=`Debug: num=${nums[idx]}`; return nums[idx];
+    function getNumeroDesdeAngulo() {
+      let anguloNormalizado = (-bolaAng + sector / 2) % (2 * Math.PI);
+      if (anguloNormalizado < 0) anguloNormalizado += 2 * Math.PI;
+      const indice = Math.floor(anguloNormalizado / sector);
+      return nums[indice];
     }
+    
+    function animarGiro() {
+        let vueltas = 8 + Math.random() * 4;
+        let duracion = 5000 + Math.random() * 3000;
+        let anguloInicial = bolaAng;
+        let desplazamientoTotal = (vueltas * 2 * Math.PI) + (Math.random() * 2 * Math.PI);
+        let tiempoInicio = Date.now();
 
-    function animate(idx, repeat){
-      let v=8+Math.random()*4, dur=3000+Math.random()*2000, start=Date.now(), init=bolaAng;
-      let tgt=-(idx*sector+sector/2), delta=v*2*Math.PI+(tgt-init);
-      (function frame(){
-        let t=(Date.now()-start)/dur;
-        if(t>=1){
-          bolaAng=init+delta; draw(); let n=getNum();
-          if(!repeat) finish(n); else{ resEl.textContent=`🔁 Último: ${n}`; spinning=false; toggle(false);}
-          return;
+        function frame() {
+            let tiempoTranscurrido = Date.now() - tiempoInicio;
+            let progreso = tiempoTranscurrido / duracion;
+            if (progreso >= 1) {
+                bolaAng = anguloInicial + desplazamientoTotal;
+                drawWheel();
+                const numeroGanador = getNumeroDesdeAngulo();
+                finalizarRonda(numeroGanador);
+                return;
+            }
+            let easeOut = 1 - Math.pow(1 - progreso, 4);
+            bolaAng = anguloInicial + easeOut * desplazamientoTotal;
+            drawWheel();
+            requestAnimationFrame(frame);
         }
-        let e=1-Math.pow(1-t,3); bolaAng=init+e*delta; draw(); requestAnimationFrame(frame);
-      })();
+        requestAnimationFrame(frame);
     }
 
-    function finish(n){
-      spinning=false; resEl.textContent=`🎉 ¡Número: ${n}!`;
-      let win=0, m=new Map();
-      bets.forEach(b=>{ let k=b.el; if(!m.has(k)) m.set(k,{...b}); else m.get(k).amt+=b.amt; });
-      m.forEach(a=>{
-        let ok=false;
-        if(a.type==="numero") ok=Number(a.key)===n;
-        if(a.type==="color") ok=(a.key==="rojo"?reds.has(n):(!reds.has(n)&&n!==0));
-        if(a.type==="paridad") ok=(a.key==="par"?n%2===0:n%2===1);
-        if(a.type==="mitad") ok=(a.key==="bajo"?n<=18:n>=19);
-        if(a.type==="docena"){ let d=n<=12?1:n<=24?2:n===0?0:3; ok=Number(a.key)===d; }
-        if(ok) win+=a.amt*(a.type==="numero"?36:(a.type==="docena"?3:2));
+    function finalizarRonda(n) {
+      resEl.textContent = `🎉 ¡Número: ${n}!`;
+      let ganancia = 0;
+      let totalPerdido = actualizarTotalApostadoUI();
+      apuestas.forEach(apuesta => {
+        let { type, key, amt } = apuesta;
+        let esGanadora = false;
+        if (type === "numero") { esGanadora = (Number(key) === n); }
+        else if (n !== 0) {
+          if (type === "color") { esGanadora = (key === "rojo" ? reds.has(n) : !reds.has(n)); }
+          if (type === "paridad") { esGanadora = (key === "par" ? n % 2 === 0 : n % 2 !== 0); }
+          if (type === "mitad") { esGanadora = (key === "bajo" ? n >= 1 && n <= 18 : n >= 19 && n <= 36); }
+          if (type === "docena") { esGanadora = (Number(key) === Math.ceil(n / 12)); }
+          if (type === "columna") {
+            const col = n % 3;
+            const targetCol = Number(key);
+            if ((col === 1 && targetCol === 1) || (col === 2 && targetCol === 2) || (col === 0 && targetCol === 3)) {
+               esGanadora = true;
+            }
+          }
+        }
+        if (esGanadora) {
+          let multiplicador = type === "numero" ? 36 : (type === "docena" || type === "columna") ? 3 : 2;
+          ganancia += amt * multiplicador;
+        }
       });
-      saldo+=win; updSaldo();
-      if(win>0){ decir(`🏆 ¡Ganaste €${win}!`); addHist(`✅ ${n} +€${win}`); }
-      else { decir(`😬 Sin premio`); addHist(`❌ ${n}`); }
-      bets=[]; document.querySelectorAll("#tablaNumeros td,.externas button").forEach(e=>clrBadge(e));
-      updTotal(); toggle(false);
+      
+      saldo += ganancia;
+      actualizarSaldoUI();
+      let gananciaNeta = ganancia - totalPerdido;
+      if (ganancia > 0) {
+        decir(`🏆 ¡Ganaste ${ganancia} €!`);
+        anadirHistorial(`✅ ${n} (Ganancia neta: +${gananciaNeta} €)`);
+      } else {
+        decir(`🤔 ${croupier} dice: Mejor suerte la próxima vez.`);
+        anadirHistorial(`❌ ${n} (Pérdida: -${totalPerdido} €)`);
+      }
+      ultimaApuesta = new Map(apuestas);
+      apuestas.clear();
+      historialApuestas = [];
+      limpiarTodosLosBadges();
+      actualizarTotalApostadoUI();
+      toggleControles(false);
     }
 
-    spinBtn.addEventListener("click",()=>{
-      if(spinning||saldo<=0||bets.length===0){ if(bets.length===0) alert("Apuesta primero"); return; }
-      spinning=true; toggle(true);
-      let n=nums[Math.floor(Math.random()*nums.length)], idx=nums.indexOf(n);
-      animate(idx,false);
+    spinBtn.addEventListener("click", () => {
+      const totalApostado = actualizarTotalApostadoUI();
+      if (spinning || totalApostado === 0) return;
+      toggleControles(true);
+      decir(`🎲 ${croupier} dice: ¡No va más!`);
+      animarGiro();
+    });
+    
+    betElements.forEach(el => {
+      const targetElement = el.tagName === 'BUTTON' ? el : el;
+      const type = targetElement.dataset.num ? 'numero' : targetElement.dataset.betType;
+      const key = targetElement.dataset.num || targetElement.dataset.betKey;
+      if (!type) return;
+      
+      targetElement.dataset.betId = `${type}-${key}`;
+      
+      targetElement.addEventListener("click", () => {
+        if (spinning) return;
+        const totalApostado = actualizarTotalApostadoUI();
+        const amt = selChip;
+        if (saldo < amt) { decir("❌ Saldo insuficiente."); return; }
+        if (totalApostado + amt > MAX_APUESTA_RONDA) { decir("❌ Límite de ronda superado."); return; }
+        const betId = targetElement.dataset.betId;
+        const apuestaActual = apuestas.get(betId) || { type, key, amt: 0, el: targetElement };
+        if (apuestaActual.amt + amt > MAX_APUESTA_CASILLA) { decir("❌ Límite por casilla superado."); return; }
+        
+        apuestaActual.amt += amt;
+        apuestas.set(betId, apuestaActual);
+        historialApuestas.push({ betId, amt });
+        saldo -= amt;
+        actualizarSaldoUI();
+        renderizarBadge(targetElement, apuestaActual.amt);
+        actualizarTotalApostadoUI();
+      });
     });
 
-    repBtn.addEventListener("click",()=>{
-      if(spinning) return;
-      let last=getNum(), idx=nums.indexOf(last);
-      spinning=true; toggle(true); animate(idx,true);
-    });
-
-    document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
-      selChip=Number(c.dataset.value);
-      document.querySelectorAll(".chip").forEach(x=>x.classList.remove("selected"));
+    document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+      if (spinning) return;
+      selChip = Number(c.dataset.value);
+      document.querySelectorAll(".chip").forEach(x => x.classList.remove("selected"));
       c.classList.add("selected");
     }));
 
-    document.querySelectorAll("#tablaNumeros td,.externas button").forEach(e=>e.addEventListener("click",()=>{
-      if(spinning||saldo<=0) return;
-      let cur=parseInt(e.dataset.apuesta||"0",10), amt=selChip;
-      if(cur+amt>MAX_C|| totalBet+amt>MAX_R|| saldo<amt) return;
-      e.dataset.apuesta=cur+amt; mkBadge(e,cur+amt);
-      saldo-=amt; updSaldo();
-      let type=e.dataset.num?"numero":e.dataset.bet, key=e.dataset.num||e.dataset.value;
-      bets.push({el:e,type,type,type,key,amt});
-      updTotal(); addHist(`➕ ${type}-${key}:€${amt}`);
-    }));
-
-    document.getElementById("quitarUltima").addEventListener("click",()=>{
-      if(spinning||!bets.length) return;
-      let a=bets.pop(), cur=parseInt(a.el.dataset.apuesta||"0",10)-a.amt;
-      if(cur>0) mkBadge(a.el,cur); else clrBadge(a.el);
-      saldo+=a.amt; updSaldo(); updTotal(); addHist(`↩️ Undo ${a.type}-${a.key}:+€${a.amt}`);
+    document.getElementById("quitarUltima").addEventListener("click", () => {
+      if (spinning || historialApuestas.length === 0) return;
+      const ultimaAccion = historialApuestas.pop();
+      const { betId, amt } = ultimaAccion;
+      const apuesta = apuestas.get(betId);
+      if (apuesta) {
+        apuesta.amt -= amt;
+        saldo += amt;
+        if (apuesta.amt <= 0) {
+          apuestas.delete(betId);
+          limpiarBadge(apuesta.el);
+        } else {
+          renderizarBadge(apuesta.el, apuesta.amt);
+        }
+        actualizarSaldoUI();
+        actualizarTotalApostadoUI();
+        anadirHistorial(`↩️ Deshacer apuesta de ${amt}€`);
+      }
     });
 
-    document.getElementById("quitarTodas").addEventListener("click",()=>{
-      if(spinning||!bets.length) return;
-      bets.forEach(b=>saldo+=b.amt);
-      document.querySelectorAll("#tablaNumeros td,.externas button").forEach(e=>clrBadge(e));
-      bets=[]; updSaldo(); updTotal(); addHist("🗑️ Limpieza");
+    document.getElementById("quitarTodas").addEventListener("click", () => {
+      if (spinning || apuestas.size === 0) return;
+      const totalReembolsado = actualizarTotalApostadoUI();
+      saldo += totalReembolsado;
+      apuestas.clear();
+      historialApuestas = [];
+      limpiarTodosLosBadges();
+      actualizarSaldoUI();
+      actualizarTotalApostadoUI();
+      anadirHistorial("🗑️ Todas las apuestas limpiadas");
     });
 
-    document.getElementById("duplicarApuestas").addEventListener("click",()=>{
-      if(spinning||!bets.length||saldo<totalBet) return;
-      let clone=[...bets]; clone.forEach(a=>{
-        let cur=parseInt(a.el.dataset.apuesta||"0",10)+a.amt;
-        a.el.dataset.apuesta=cur; mkBadge(a.el,cur);
-        saldo-=a.amt; bets.push({...a});
+    document.getElementById("duplicarApuestas").addEventListener("click", () => {
+      const totalApostado = actualizarTotalApostadoUI();
+      if (spinning || totalApostado === 0 || saldo < totalApostado) return;
+      if (totalApostado * 2 > MAX_APUESTA_RONDA) return;
+      let puedeDuplicar = true;
+      apuestas.forEach(apuesta => { if (apuesta.amt * 2 > MAX_APUESTA_CASILLA) puedeDuplicar = false; });
+      if (!puedeDuplicar) return;
+
+      saldo -= totalApostado;
+      apuestas.forEach((apuesta, betId) => {
+        historialApuestas.push({ betId, amt: apuesta.amt });
+        apuesta.amt *= 2;
+        renderizarBadge(apuesta.el, apuesta.amt);
       });
-      updSaldo(); updTotal(); addHist(`✖️2 +€${totalBet}`);
+      actualizarSaldoUI();
+      actualizarTotalApostadoUI();
+      anadirHistorial(`✖️2 Apuestas duplicadas.`);
+    });
+    
+    document.getElementById("volverTirar").addEventListener("click", () => {
+        if(spinning || ultimaApuesta.size === 0) return;
+        const totalUltimaApuesta = Array.from(ultimaApuesta.values()).reduce((sum, bet) => sum + bet.amt, 0);
+        if(saldo < totalUltimaApuesta) return;
+        document.getElementById("quitarTodas").click();
+        ultimaApuesta.forEach((apuesta, betId) => {
+            const { type, key, amt, el } = apuesta;
+            const apuestaActual = apuestas.get(betId) || { type, key, amt: 0, el };
+            apuestaActual.amt += amt;
+            apuestas.set(betId, apuestaActual);
+            historialApuestas.push({ betId, amt });
+            saldo -= amt;
+            renderizarBadge(el, apuestaActual.amt);
+        });
+        actualizarSaldoUI();
+        actualizarTotalApostadoUI();
+        anadirHistorial("🔄 Apuesta anterior repetida.");
     });
 
-    document.getElementById("confirmCroupier").addEventListener("click",()=>{
-      let sel=document.getElementById("croupierSelect").value;
-      if(!sel) return alert("Selecciona croupier");
-      document.getElementById("gameWrap").style.display="block";
-      updSaldo(); updTotal(); decir("🎲 ¡La suerte está echada!");
+    document.getElementById("confirmCroupier").addEventListener("click", () => {
+      const select = document.getElementById("croupierSelect");
+      if (!select.value) { alert("Por favor, selecciona un croupier."); return; }
+      croupier = select.value;
+      document.getElementById("croupierSelectWrap").style.display = "none";
+      gameWrap.style.display = "block";
+      decir(`🎩 Croupier ${croupier} te da la bienvenida.`);
     });
 
-    document.getElementById("resetAll").addEventListener("click",()=>{
-      if(!confirm("¿Reiniciar?")) return;
-      saldo=1000; localStorage.setItem("saldo_ruleta",saldo);
-      bets=[]; document.querySelectorAll("#tablaNumeros td,.externas button").forEach(e=>clrBadge(e));
-      updSaldo(); updTotal(); resEl.textContent=""; dbgEl.textContent="Debug: reiniciado"; addHist("🔄 Reinicio"); decir("🎯 Reiniciado");
+    document.getElementById("resetAll").addEventListener("click", () => {
+      if (!confirm("¿Reiniciar todo el juego?")) return;
+      localStorage.removeItem("saldo_ruleta");
+      location.reload();
     });
 
-    draw(); updSaldo(); updTotal();
+    drawWheel();
+    actualizarSaldoUI();
+    actualizarTotalApostadoUI();
+    toggleControles(false);
+    gameWrap.style.display = "none";
+    document.getElementById("croupierSelectWrap").style.display = "flex";
   })();
   </script>
 </body>
